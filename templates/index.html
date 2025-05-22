@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>雲端記帳系統</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body class="p-4 bg-light">
+  <div class="container">
+    <h2 class="mb-4">我的雲端記帳系統</h2>
+
+    <form id="form" class="row g-3 mb-4">
+      <div class="col-md-2">
+        <input type="date" class="form-control" id="date" required>
+      </div>
+      <div class="col-md-2">
+        <select class="form-select" id="type">
+          <option value="支出">支出</option>
+          <option value="收入">收入</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select class="form-select" id="category" required>
+          <!-- 稍後由 JS 動態填入 -->
+        </select>
+      </div>
+      <div class="col-md-3">
+        <input type="text" class="form-control" id="item" placeholder="項目名稱" required>
+      </div>
+      <div class="col-md-2">
+        <input type="number" class="form-control" id="amount" placeholder="金額" required>
+      </div>
+      <div class="col-md-1">
+        <button type="submit" class="btn btn-primary">新增</button>
+      </div>
+    </form>
+
+    <div class="row mb-4">
+      <div class="col-md-4">
+        <div class="card border-success">
+          <div class="card-body">
+            <h5 class="card-title text-success">總收入</h5>
+            <p class="card-text fs-5" id="totalIncome">$0</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card border-danger">
+          <div class="card-body">
+            <h5 class="card-title text-danger">總支出</h5>
+            <p class="card-text fs-5" id="totalExpense">$0</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card border-primary">
+          <div class="card-body">
+            <h5 class="card-title text-primary">結餘</h5>
+            <p class="card-text fs-5" id="balance">$0</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h5>交易紀錄</h5>
+    <ul id="records" class="list-group mt-3"></ul>
+    <h5 class="mt-5">支出類別圓餅圖</h5>
+    <canvas id="expenseChart" width="400" height="400"></canvas>
+
+    <div class="my-3">
+      <button class="btn btn-outline-success me-2" onclick="downloadReport('excel')">匯出 Excel</button>
+      <button class="btn btn-outline-danger" onclick="downloadReport('pdf')">匯出 PDF</button>
+    </div>
+  </div>
+
+  <script>
+    const categories = {
+      "收入": ["薪資", "投資", "獎金", "其他收入"],
+      "支出": ["餐飲", "交通", "購物", "娛樂", "其他支出"]
+    };
+
+    function updateCategoryOptions() {
+      const type = document.getElementById("type").value;
+      const categorySelect = document.getElementById("category");
+      categorySelect.innerHTML = "";
+      categories[type].forEach(c => {
+        const option = document.createElement("option");
+        option.value = c;
+        option.textContent = c;
+        categorySelect.appendChild(option);
+      });
+    }
+
+    async function loadTransactions() {
+      const res = await fetch('/get_transactions');
+      const data = await res.json();
+      const list = document.getElementById('records');
+      const incomeLabel = document.getElementById('totalIncome');
+      const expenseLabel = document.getElementById('totalExpense');
+      const balanceLabel = document.getElementById('balance');
+      list.innerHTML = '';
+
+      let income = 0, expense = 0;
+      data.forEach(t => {
+        const li = document.createElement('li');
+        li.className = "list-group-item";
+        li.textContent = `[${t.date}] ${t.type}｜${t.category}｜${t.item}｜$${t.amount.toLocaleString()}`;
+        list.appendChild(li);
+
+        if (t.type === "收入") income += t.amount;
+        else if (t.type === "支出") expense += t.amount;
+      });
+
+      incomeLabel.textContent = "$" + income.toLocaleString();
+      expenseLabel.textContent = "$" + expense.toLocaleString();
+      balanceLabel.textContent = "$" + (income - expense).toLocaleString();
+
+      updateExpenseChart(data);
+    }
+
+    document.getElementById("form").addEventListener("submit", async e => {
+      e.preventDefault();
+      const data = {
+        date: document.getElementById("date").value,
+        type: document.getElementById("type").value,
+        category: document.getElementById("category").value,
+        item: document.getElementById("item").value,
+        amount: parseFloat(document.getElementById("amount").value)
+      };
+      await fetch("/add_transaction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+      e.target.reset();
+      updateCategoryOptions();
+      loadTransactions();
+    });
+
+    document.getElementById("type").addEventListener("change", updateCategoryOptions);
+
+    window.onload = () => {
+      updateCategoryOptions();
+      loadTransactions();
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let expenseChart;
+
+function updateExpenseChart(transactions) {
+  const expenseByCategory = {};
+  transactions.forEach(t => {
+    if (t.type === "支出") {
+      if (!expenseByCategory[t.category]) {
+        expenseByCategory[t.category] = 0;
+      }
+      expenseByCategory[t.category] += t.amount;
+    }
+  });
+
+  const labels = Object.keys(expenseByCategory);
+  const values = Object.values(expenseByCategory);
+
+  if (expenseChart) expenseChart.destroy();
+
+  const ctx = document.getElementById('expenseChart').getContext('2d');
+  expenseChart = new Chart(ctx, {
+    type: 'pie',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: '支出佔比',
+        data: values,
+        backgroundColor: [
+          '#f44336', '#ff9800', '#ffeb3b', '#4caf50', '#2196f3', '#9c27b0'
+        ],
+        borderWidth: 1
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { position: 'right' }
+      }
+    }
+  });
+}
+
+function downloadReport(format) {
+  window.open(`/export_report?format=${format}`, "_blank");
+}
+</script>
+
+</body>
+</html>
