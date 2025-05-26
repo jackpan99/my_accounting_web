@@ -2,9 +2,9 @@ import os
 import json
 import base64
 import tempfile
-from datetime import datetime
 from dotenv import load_dotenv
 import firebase_admin
+from datetime import datetime
 from firebase_admin import credentials, firestore
 from flask import Flask, render_template, request, jsonify, send_file
 import pandas as pd
@@ -16,18 +16,15 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
-# 載入環境變數
+# 載入 .env
 load_dotenv()
 
-# Firebase 初始化
+# 讀取並解碼 Firebase 金鑰
 firebase_b64 = os.getenv("FIREBASE_KEY_B64")
 if not firebase_b64:
     raise ValueError("未讀到 FIREBASE_KEY_B64 環境變數")
-
 firebase_json = base64.b64decode(firebase_b64).decode("utf-8")
-
-# 使用暫存檔案初始化 Firebase
-with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as tmp:
+with tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode="w", encoding="utf-8") as tmp:
     tmp.write(firebase_json)
     tmp_path = tmp.name
 
@@ -37,7 +34,41 @@ db = firestore.client()
 
 app = Flask(__name__)
 
-# 路由定義
+@app.route("/add", methods=["POST"])
+def add():
+    uid = request.form.get("uid")
+    if not uid:
+        return "請先登入", 401
+
+    # 收集表單資料
+    category = request.form["category"]
+    amount = float(request.form["amount"])
+    note = request.form.get("note", "")
+    ttype = request.form.get("type", "支出")
+    timestamp = datetime.datetime.now()
+
+    # 存入 Firestore，使用者的 UID 為根節點
+    db.collection("users").document(uid).collection("transactions").add({
+        "category": category,
+        "amount": amount,
+        "note": note,
+        "type": ttype,
+        "timestamp": timestamp
+    })
+    return redirect("/")
+
+@app.route("/login")
+def login():
+    return render_template("login.html")
+
+@app.route("/register")
+def register():
+    return render_template("register.html")
+
+@app.route("/reset")
+def reset():
+    return render_template("reset.html")
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -81,24 +112,34 @@ def export_report():
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=A4)
         styles = getSampleStyleSheet()
+        # PDF 字型修正：預設用 Helvetica，避免 Render 502
+        styles['Normal'].fontName = 'Helvetica'
+        styles['Title'].fontName = 'Helvetica'
+        font_name = 'Helvetica'
+        # 若你有自訂字型檔，可用下列方式註冊
+        # try:
+        #     font_path = os.path.join(app.root_path, 'fonts', 'NotoSansTC-Regular.ttf')
+        #     pdfmetrics.registerFont(TTFont('Noto', font_path))
+        #     styles['Normal'].fontName = 'Noto'
+        #     styles['Title'].fontName = 'Noto'
+        #     font_name = 'Noto'
+        # except Exception as e:
+        #     font_name = 'Helvetica'
 
-        # 字型處理（兼容 Render 環境）
-        font_name = 'Helvetica'  # 預設使用系統字型
-        try:
-            font_path = os.path.join(app.root_path, 'static/fonts/NotoSansTC-Regular.ttf')
-            if os.path.exists(font_path):
-                pdfmetrics.registerFont(TTFont('CustomFont', font_path))
-                styles['Normal'].fontName = 'CustomFont'
-                styles['Title'].fontName = 'CustomFont'
-                font_name = 'CustomFont'
-        except Exception as e:
-            print(f"字型載入失敗，使用預設字型: {str(e)}")
-
-        # 建立 PDF 內容
         elements = [Paragraph("記帳報表", styles['Title']), Spacer(1, 12)]
-        table_data = [df.columns.tolist()] + df.values.tolist() if not df.empty else [["無資料"]]
-        table = Table(table_data)
-        
+        table_data = [["日期", "類型", "類別", "項目", "金額"]]
+        if data:
+            for row in data:
+                table_data.append([
+                    row.get("date", ""),
+                    row.get("type", ""),
+                    row.get("category", ""),
+                    row.get("item", ""),
+                    f"{row.get('amount', 0):,.2f}"
+                ])
+        else:
+            table_data.append(["無資料", "", "", "", ""])
+        table = Table(table_data, colWidths=[80, 50, 80, 150, 60])
         table.setStyle(TableStyle([
             ('FONTNAME', (0, 0), (-1, -1), font_name),
             ('BACKGROUND', (0, 0), (-1, 0), colors.lightblue),
@@ -106,23 +147,20 @@ def export_report():
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('GRID', (0, 0), (-1, -1), 1, colors.grey)
         ]))
-
         elements.append(table)
         doc.build(elements)
         buffer.seek(0)
         return send_file(buffer, download_name="記帳報表.pdf", as_attachment=True)
 
-import os
-from flask import send_from_directory
-
+# favicon 路由（避免 404）
 @app.route('/favicon.ico')
 def favicon():
-    return send_from_directory(os.path.join(app.root_path, 'static'),
-                               'favicon.ico', mimetype='image/vnd.microsoft.icon')
+    return '', 204
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 10000))
-    app.run(host='0.0.0.0', port=port, debug=False)  # Render 需關閉 debug 模式
+    app.run(host='0.0.0.0', port=port, debug=False)
+
 
 
 

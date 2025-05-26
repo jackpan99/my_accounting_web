@@ -74,6 +74,38 @@
     </div>
   </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBectPwnEIsqBxsFgfwS-wN78guSVNYl6E",
+    authDomain: "personal-account-app-532a8.firebaseapp.com",
+    projectId: "personal-account-app-532a8"
+  };
+  firebase.initializeApp(firebaseConfig);
+
+  firebase.auth().onAuthStateChanged(user => {
+    if (!user) {
+      // 未登入，導回登入頁
+      window.location.href = "/login";
+    } else {
+      // 取得 UID，存在 localStorage 或傳給後端
+      const uid = user.uid;
+      localStorage.setItem("uid", uid);
+
+      // ✅ 自動帶入 UID 傳到後端（用來載入資料）
+      document.getElementById("uid").value = uid;
+    }
+  });
+</script>
+
+<!-- 新增隱藏欄位 -->
+<form id="add-form" method="POST" action="/add">
+  <input type="hidden" id="uid" name="uid">
+  <!-- 其他表單項目... -->
+</form>
+
+
   <script>
     const categories = {
       "收入": ["薪資", "投資", "獎金", "其他收入"],

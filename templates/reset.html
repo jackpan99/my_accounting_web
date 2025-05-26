@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>忘記密碼</title>
+  <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBectPwnEIsqBxsFgfwS-wN78guSVNYl6E",
+      authDomain: "personal-account-app-532a8.firebaseapp.com",
+      projectId: "personal-account-app-532a8"
+    };
+    firebase.initializeApp(firebaseConfig);
+  </script>
+</head>
+<body>
+  <h2>重設密碼</h2>
+  <input type="email" id="email" placeholder="Email"><br>
+  <button onclick="reset()">寄送重設信</button>
+  <p><a href="/login">回登入</a></p>
+
+  <script>
+    function reset() {
+      const email = document.getElementById("email").value;
+      firebase.auth().sendPasswordResetEmail(email)
+        .then(() => {
+          alert("已寄送重設信");
+          window.location.href = "/login";
+        })
+        .catch(error => {
+          alert("發送失敗：" + error.message);
+        });
+    }
+  </script>
+</body>
+</html>

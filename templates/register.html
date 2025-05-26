@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>註冊</title>
+  <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBectPwnEIsqBxsFgfwS-wN78guSVNYl6E",
+      authDomain: "personal-account-app-532a8.firebaseapp.com",
+      projectId: "personal-account-app-532a8"
+    };
+    firebase.initializeApp(firebaseConfig);
+  </script>
+</head>
+<body>
+  <h2>註冊</h2>
+  <input type="email" id="email" placeholder="Email"><br>
+  <input type="password" id="password" placeholder="Password"><br>
+  <button onclick="register()">註冊</button>
+  <p><a href="/login">已有帳號？登入</a></p>
+
+  <script>
+    function register() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      firebase.auth().createUserWithEmailAndPassword(email, password)
+        .then(userCredential => {
+          alert("註冊成功，請登入");
+          window.location.href = "/login";
+        })
+        .catch(error => {
+          alert("註冊失敗：" + error.message);
+        });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>登入</title>
+  <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBectPwnEIsqBxsFgfwS-wN78guSVNYl6E",
+      authDomain: "personal-account-app-532a8.firebaseapp.com",
+      projectId: "personal-account-app-532a8"
+    };
+    firebase.initializeApp(firebaseConfig);
+  </script>
+</head>
+<body>
+  <h2>登入</h2>
+  <input type="email" id="email" placeholder="Email"><br>
+  <input type="password" id="password" placeholder="Password"><br>
+  <button onclick="login()">登入</button>
+  <p><a href="/register">尚未註冊？</a></p>
+  <p><a href="/reset">忘記密碼？</a></p>
+
+  <script>
+    function login() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      firebase.auth().signInWithEmailAndPassword(email, password)
+        .then(userCredential => {
+          const uid = userCredential.user.uid;
+          localStorage.setItem("uid", uid);
+          window.location.href = "/";
+        })
+        .catch(error => {
+          alert("登入失敗：" + error.message);
+        });
+    }
+  </script>
+</body>
+</html>
