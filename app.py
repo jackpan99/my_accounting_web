@@ -36,6 +36,10 @@ app = Flask(__name__)
 def index():
     return render_template("index.html")
 
+@app.route("/")
+def index():
+    return render_template("index.html")
+
 @app.route("/add_transaction", methods=["POST"])
 def add_transaction():
     data = request.json
@@ -61,6 +65,9 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+import os
 
 @app.route("/export_report")
 def export_report():
@@ -83,30 +90,35 @@ def export_report():
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=A4)
         styles = getSampleStyleSheet()
-        styles['Normal'].fontName = 'Noto'
-        styles['Title'].fontName = 'Noto'
+       # styles['Normal'].fontName = 'Noto'
+       # styles['Title'].fontName = 'Noto'
 
+        try:
+            # 嘗試載入專案中的字型檔
+            font_path = os.path.join(os.path.dirname(__file__), 'fonts', 'NotoSansTC-Regular.ttf')
+            if os.path.exists(font_path):
+                pdfmetrics.registerFont(TTFont('CustomFont', font_path))
+                styles['Normal'].fontName = 'CustomFont'
+                styles['Title'].fontName = 'CustomFont'
+                font_name = 'CustomFont'
+            else:
+                # 回退到系統預設字型
+                font_name = 'Helvetica'
+        except:
+            # 如果字型載入失敗，使用預設字型
+            font_name = 'Helvetica'
+        
         elements = [Paragraph("記帳報表", styles['Title']), Spacer(1, 12)]
-
-        # 表格資料標題列
-        table_data = [["日期", "類型", "類別", "項目", "金額"]]
-
-        if data:
-            for row in data:
-                table_data.append([
-                    row.get("date", ""),
-                    row.get("type", ""),
-                    row.get("category", ""),
-                    row.get("item", ""),
-                    f"{row.get('amount', 0):,.2f}"
-                ])
+        # 建立表格資料
+        if not df.empty:
+            table_data = [df.columns.tolist()] + df.values.tolist()
         else:
-            # 無資料時補上提示列
-            table_data.append(["無資料", "", "", "", ""])
+            table_data = [["date", "type", "category", "item", "amount"]]
 
-        table = Table(table_data, colWidths=[80, 50, 80, 150, 60])
+        table = Table(table_data)
+
         table.setStyle(TableStyle([
-            ('FONTNAME', (0, 0), (-1, -1), 'Noto'),
+            ('FONTNAME', (0, 0), (-1, -1), font_name),  # 使用動態字型名稱
             ('BACKGROUND', (0, 0), (-1, 0), colors.lightblue),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
@@ -122,6 +134,7 @@ def export_report():
    # else:
     #    return jsonify({"error": "Unsupported format"}), 400
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port, debug=True)
 
 

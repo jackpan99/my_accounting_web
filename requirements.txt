@@ -1,8 +1,7 @@
 Flask==3.0.2
 gunicorn==21.2.0
-firebase_admin
-python-dotenv
-pandas
-reportlab
-openpyxl
-gunicorn
+firebase_admin==6.2.0
+python-dotenv==1.0.0
+pandas==2.0.3
+reportlab==4.0.4
+openpyxl=3.1.2
