@@ -1,4 +1,7 @@
 .env
 firebase_key.json
+firebase_key.b64.txt
+*.ttf
+*.ttc
 __pycache__/
 *.pyc
