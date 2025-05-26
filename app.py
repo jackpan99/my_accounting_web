@@ -4,13 +4,19 @@ from firebase_admin import credentials, firestore
 from datetime import datetime
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+import os
+import json
+from firebase_admin import credentials
 
 # 註冊中文字型
 pdfmetrics.registerFont(TTFont('Noto', 'noto.ttf'))
 
+# 從環境變數中取得 JSON 字串
+firebase_json = os.getenv('FIREBASE_KEY_JSON')
 
 # 初始化 Firebase
-cred = credentials.Certificate("firebase_key.json")
+# 將字串轉為 dict 再用 firebase_admin 初始化
+cred = credentials.Certificate(json.loads(firebase_json))
 firebase_admin.initialize_app(cred)
 db = firestore.client()
 
