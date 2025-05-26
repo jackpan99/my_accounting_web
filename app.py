@@ -1,23 +1,33 @@
-from flask import Flask, render_template, request, jsonify
-import firebase_admin
-from firebase_admin import credentials, firestore
-from datetime import datetime
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 import os
 import json
+import base64
+import tempfile
+from dotenv import load_dotenv
+import firebase_admin
+from datetime import datetime
 from firebase_admin import credentials
+from firebase_admin import firestore
+from flask import Flask, render_template, request, jsonify
 
-# 註冊中文字型
-pdfmetrics.registerFont(TTFont('Noto', 'noto.ttf'))
+# 載入 .env
+load_dotenv()
 
-# 從環境變數中取得 JSON 字串
-firebase_json = os.getenv('FIREBASE_KEY_JSON')
+# 讀取並解碼 Firebase 金鑰
+firebase_b64 = os.getenv("FIREBASE_KEY_B64")
+if not firebase_b64:
+    raise ValueError("未讀到 FIREBASE_KEY_B64 環境變數")
 
-# 初始化 Firebase
-# 將字串轉為 dict 再用 firebase_admin 初始化
-cred = credentials.Certificate(json.loads(firebase_json))
+firebase_json = base64.b64decode(firebase_b64).decode("utf-8")
+
+# 寫入暫存檔，然後關閉後再讀取
+with tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode="w", encoding="utf-8") as tmp:
+    tmp.write(firebase_json)
+    tmp_path = tmp.name  # 暫存檔路徑
+
+# 現在檔案已寫好，初始化 Firebase
+cred = credentials.Certificate(tmp_path)
 firebase_admin.initialize_app(cred)
+
 db = firestore.client()
 
 app = Flask(__name__)
