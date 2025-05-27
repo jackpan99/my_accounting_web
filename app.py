@@ -75,10 +75,19 @@ def index():
 
 @app.route("/add_transaction", methods=["POST"])
 def add_transaction():
-    data = request.json
-    data["timestamp"] = datetime.now()
-    db.collection("transactions").add(data)
-    return jsonify({"status": "success"})
+    try:
+        data = request.get_json()
+        if not data or "uid" not in data:
+            return jsonify({"error": "缺少 uid"}), 400
+
+        data["timestamp"] = datetime.now()
+        db.collection("users").document(data["uid"]).collection("transactions").add(data)
+        return jsonify({"status": "success"})
+    except Exception as e:
+        print("❌ 新增失敗：", e)
+        return jsonify({"error": str(e)}), 500
+
+
 
 @app.route("/get_transactions", methods=["GET", "POST"])
 def get_transactions():
