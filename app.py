@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 import firebase_admin
 from datetime import datetime
 from firebase_admin import credentials, firestore
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, redirect
 import pandas as pd
 import io
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
@@ -80,15 +80,22 @@ def add_transaction():
     db.collection("transactions").add(data)
     return jsonify({"status": "success"})
 
-@app.route("/get_transactions", methods=["GET"])
+@app.route("/get_transactions", methods=["POST"])
 def get_transactions():
-    docs = db.collection("transactions").order_by("timestamp", direction=firestore.Query.DESCENDING).stream()
+    uid = request.json.get("uid")
+    if not uid:
+        return jsonify([])
+
+    docs = db.collection("users").document(uid).collection("transactions")\
+        .order_by("timestamp", direction=firestore.Query.DESCENDING).stream()
+
     result = []
     for doc in docs:
         record = doc.to_dict()
         record["id"] = doc.id
         record["timestamp"] = record["timestamp"].strftime("%Y-%m-%d %H:%M")
         result.append(record)
+
     return jsonify(result)
 
 @app.route("/export_report")

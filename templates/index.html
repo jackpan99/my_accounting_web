@@ -86,18 +86,21 @@
 
   firebase.auth().onAuthStateChanged(user => {
     if (!user) {
-      // 未登入，導回登入頁
+      // ⛔ 未登入導向 login
       window.location.href = "/login";
     } else {
-      // 取得 UID，存在 localStorage 或傳給後端
-      const uid = user.uid;
-      localStorage.setItem("uid", uid);
-
-      // ✅ 自動帶入 UID 傳到後端（用來載入資料）
-      document.getElementById("uid").value = uid;
+      // ✅ 登入後取得 UID，塞進隱藏欄位
+      document.getElementById("uid").value = user.uid;
+      console.log("登入成功，UID:", user.uid);
     }
   });
 </script>
+
+<!-- 表單中新增 UID 欄位 -->
+<form action="/add" method="POST">
+  <input type="hidden" id="uid" name="uid">
+  ...
+</form>
 
 <!-- 新增隱藏欄位 -->
 <form id="add-form" method="POST" action="/add">
@@ -160,14 +163,14 @@
         item: document.getElementById("item").value,
         amount: parseFloat(document.getElementById("amount").value)
       };
-      await fetch("/add_transaction", {
+      await fetch("/get_transactions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      });
-      e.target.reset();
-      updateCategoryOptions();
-      loadTransactions();
+        body: JSON.stringify({ uid: localStorage.getItem("uid") })
+    })
+       .then(res => res.json())
+       .then(data => {
+       // 顯示交易資料
     });
 
     document.getElementById("type").addEventListener("change", updateCategoryOptions);
