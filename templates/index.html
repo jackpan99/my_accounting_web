@@ -111,12 +111,9 @@
   }
 
   async function loadTransactions() {
-    const res = await fetch('/get_transactions', {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ uid: localStorage.getItem("uid") })
-    });
+    const res = await fetch('/get_transactions');
     const data = await res.json();
+    
     const list = document.getElementById('records');
     const incomeLabel = document.getElementById('totalIncome');
     const expenseLabel = document.getElementById('totalExpense');
