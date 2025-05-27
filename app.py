@@ -80,22 +80,27 @@ def add_transaction():
     db.collection("transactions").add(data)
     return jsonify({"status": "success"})
 
-@app.route("/get_transactions", methods=["POST"])
+@app.route("/get_transactions", methods=["GET", "POST"])
 def get_transactions():
-    uid = request.json.get("uid")
+    uid = None
+    if request.method == "POST":
+        data = request.get_json()
+        uid = data.get("uid")
+    elif request.method == "GET":
+        uid = request.args.get("uid")
+
     if not uid:
         return jsonify([])
 
-    docs = db.collection("users").document(uid).collection("transactions")\
+    docs = db.collection("users").document(uid).collection("transactions") \
         .order_by("timestamp", direction=firestore.Query.DESCENDING).stream()
 
     result = []
     for doc in docs:
         record = doc.to_dict()
         record["id"] = doc.id
-        record["timestamp"] = record["timestamp"].strftime("%Y-%m-%d %H:%M")
+        record["date"] = record["timestamp"].strftime("%Y-%m-%d")
         result.append(record)
-
     return jsonify(result)
 
 @app.route("/export_report")
