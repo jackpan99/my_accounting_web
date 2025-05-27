@@ -77,15 +77,21 @@ def index():
 def add_transaction():
     try:
         data = request.get_json()
+        print("📥 接收到資料：", data)
+
         if not data or "uid" not in data:
-            return jsonify({"error": "缺少 uid"}), 400
+            return jsonify({"error": "缺少 uid 或資料"}), 400
 
         data["timestamp"] = datetime.now()
+
+        # Firestore 儲存
         db.collection("users").document(data["uid"]).collection("transactions").add(data)
+
         return jsonify({"status": "success"})
     except Exception as e:
-        print("❌ 新增失敗：", e)
+        print("❌ 新增交易發生錯誤：", e)
         return jsonify({"error": str(e)}), 500
+
 
 
 
